@@ -9,7 +9,6 @@ myenv\Scripts\activate
 pip install opencv-python
 pip install mediapipe
 pip install Flask
-pip install reportlab
 
 ---------------   run python file    ------------------------
 python app.py
