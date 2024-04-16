@@ -86,6 +86,18 @@ paintWindow = np.zeros((471,636,3)) + 255
 # A varaible which tells when to clear canvas
 clear = False
 
+def overlay_canvas_on_paint_window(canvas, paintWindow):
+    # Resize canvas to match the dimensions of paintWindow
+    canvas_resized = cv2.resize(canvas, (paintWindow.shape[1], paintWindow.shape[0]))
+    
+    mask = cv2.cvtColor(canvas_resized, cv2.COLOR_BGR2GRAY)  # Create a mask from the canvas
+    paintWindow[mask != 255] = canvas_resized[mask != 255]  # Overlay non-white pixels from canvas onto paint window
+    
+    return paintWindow
+
+
+
+
 while(1):
     _, frame = cap.read()
     frame = cv2.flip(frame, 1 )
@@ -147,7 +159,8 @@ while(1):
     
     # Find Contours
     contours, hierarchy = cv2.findContours(mask,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-    
+    canvas_resized = cv2.resize(canvas, (paintWindow.shape[1], paintWindow.shape[0]))
+
     # Make sure there is a contour present and also its size is bigger than noise threshold.
     if contours and cv2.contourArea(max(contours, key = cv2.contourArea)) > noiseth:
                 
@@ -164,7 +177,11 @@ while(1):
            
         else:
             if switch == 'Eraser':
-                cv2.circle(canvas, (x2, y2), 20, (0,0,0), -1)
+                cv2.circle(canvas, (x2, y2), 20, (0,0,0), -1)             
+                eraser_mask = np.all(canvas_resized == [0, 0, 0], axis=-1)
+                paintWindow[eraser_mask] = 255
+
+                #paintWindow = np.zeros((471, 636, 3)) + 255                  
                 bpoints = [deque(maxlen=512)]
                 gpoints = [deque(maxlen=512)]
                 rpoints = [deque(maxlen=512)]
@@ -174,8 +191,6 @@ while(1):
                 green_index = 0
                 red_index = 0
                 yellow_index = 0
-
-                paintWindow[67:,:,:] = 255
                 
             else:
                 if x1 == 0 and y1 == 0 and flag == True:
@@ -215,9 +230,8 @@ while(1):
                         for k in range(1, len(points[i][j])):
                             if points[i][j][k - 1] is None or points[i][j][k] is None:
                                 continue
-                            
-                            canvas = cv2.line(canvas, points[i][j][k - 1], points[i][j][k], colors[i], 2)
-                            cv2.line(paintWindow, points[i][j][k - 1], points[i][j][k], colors[i], 2)
+                            cv2.line(paintWindow, points[i][j][k - 1], points[i][j][k], colors[i], 3)
+                            canvas = cv2.line(canvas, points[i][j][k - 1], points[i][j][k], colors[i], 3)
 
         
         # After the line is drawn the new points become the previous points.
@@ -227,12 +241,14 @@ while(1):
         if area > wiper_thresh:
            cv2.putText(canvas,'Clearing Canvas',(0,200), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,255), 1, cv2.LINE_AA)
            clear = True 
+           paintWindow[67:,:,:] = 255
 
     else:
         # If there were no contours detected then make x1,y1 = 0
         x1,y1 =0,0
     
-   
+
+
     # Now this piece of code is just for smooth drawing. (Optional)
     _,mask = cv2.threshold(cv2.cvtColor(canvas, cv2.COLOR_BGR2GRAY), 20, 255, cv2.THRESH_BINARY)
     foreground = cv2.bitwise_and(canvas, canvas, mask = mask)
@@ -249,9 +265,12 @@ while(1):
 
     cv2.imwrite('paintWindow.png', paintWindow)
     cv2.imshow("Output", frame) 
-    cv2.imshow("Paint", paintWindow)
+    paintWindow = overlay_canvas_on_paint_window(canvas, paintWindow)  # Overlay canvas content onto paint window
+    cv2.imshow("Paint", paintWindow)  # Show the paint window with painted content only
+
     k = cv2.waitKey(5) & 0xFF
-    if k == 27:
+    if k == 27:  
+        
         break
     
     # Clear the canvas after 1 second, if the clear variable is true
