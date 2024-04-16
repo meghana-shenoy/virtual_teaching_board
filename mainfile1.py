@@ -75,6 +75,7 @@ last_switch = time.time()
 
 # Initilize x1,y1 points
 x1,y1=0,0
+flag = False
 
 # Threshold for noise
 noiseth = 800
@@ -157,13 +158,37 @@ while(1):
         area = cv2.contourArea(c)
         
         # If there were no previous points then save the detected x2,y2 coordinates as x1,y1. 
-        if x1 == 0 and y1 == 0:
+        if x1 == 0 and y1 == 0 and flag == False:
             x1,y1= x2,y2
-            
+            flag = True       
+           
         else:
-            
-            if switch == 'Pen':
-                # Draw the line on the canvas
+            if switch == 'Eraser':
+                cv2.circle(canvas, (x2, y2), 20, (0,0,0), -1)
+                bpoints = [deque(maxlen=512)]
+                gpoints = [deque(maxlen=512)]
+                rpoints = [deque(maxlen=512)]
+                ypoints = [deque(maxlen=512)]
+
+                blue_index = 0
+                green_index = 0
+                red_index = 0
+                yellow_index = 0
+
+                paintWindow[67:,:,:] = 255
+                
+            else:
+                if x1 == 0 and y1 == 0 and flag == True:
+                    bpoints = [deque(maxlen=512)]
+                    gpoints = [deque(maxlen=512)]
+                    rpoints = [deque(maxlen=512)]
+                    ypoints = [deque(maxlen=512)]
+
+                    blue_index = 0
+                    green_index = 0
+                    red_index = 0
+                    yellow_index = 0
+                    
                 if y2 <= 65:
                     if 160 <= x2 <= 255:
                         colorIndex = 0 # Blue
@@ -185,27 +210,15 @@ while(1):
                         ypoints[yellow_index].appendleft(val)
 
                 points = [bpoints, gpoints, rpoints, ypoints]
-
                 for i in range(len(points)):
                     for j in range(len(points[i])):
                         for k in range(1, len(points[i][j])):
                             if points[i][j][k - 1] is None or points[i][j][k] is None:
                                 continue
+                            
                             canvas = cv2.line(canvas, points[i][j][k - 1], points[i][j][k], colors[i], 2)
                             cv2.line(paintWindow, points[i][j][k - 1], points[i][j][k], colors[i], 2)
-                
-            else:
-                bpoints.append(deque(maxlen=512))
-                blue_index += 1
-                gpoints.append(deque(maxlen=512))
-                green_index += 1
-                rpoints.append(deque(maxlen=512))
-                red_index += 1
-                ypoints.append(deque(maxlen=512))
-                yellow_index += 1
-                cv2.circle(canvas, (x2, y2), 20, (0,0,0), -1)
-            
-            
+
         
         # After the line is drawn the new points become the previous points.
         x1,y1= x2,y2
